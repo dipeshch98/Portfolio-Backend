@@ -74,9 +74,11 @@ app.get('/api/test-email', async (req, res) => {
         const resend = new Resend(process.env.RESEND_API_KEY);
         const fromEmail = process.env.FROM_EMAIL || 'Dipesh Chaudhary <onboarding@resend.dev>';
 
+        const recipient = process.env.EMAIL_USER || 'chaudharydipesh9765@gmail.com';
+
         const { data, error } = await resend.emails.send({
             from: fromEmail,
-            to: [process.env.EMAIL_USER],
+            to: [recipient],
             subject: 'Render Email Test (Resend)',
             text: 'If you receive this, Render + Resend can send emails!',
         });

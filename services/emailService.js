@@ -6,15 +6,13 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // With Resend's free tier (no custom domain), you must use: onboarding@resend.dev
 // With a verified custom domain, use your own address e.g. contact@dipeshchaudhary1.com.np
 const FROM_EMAIL = process.env.FROM_EMAIL || 'Dipesh Chaudhary <onboarding@resend.dev>';
-const OWNER_EMAIL = process.env.EMAIL_USER; // Your personal email to receive notifications
+const getOwnerEmail = () => process.env.EMAIL_USER || 'chaudharydipesh9765@gmail.com';
 
 /**
  * Verify that the Resend API key is valid.
  * Used by the diagnostic /api/test-email endpoint.
  */
 const verifyTransporter = async () => {
-    // Resend doesn't have a "verify" method like Nodemailer.
-    // We'll send a lightweight API call to check the key works.
     const { data, error } = await resend.apiKeys.list();
     if (error) {
         throw new Error(error.message || 'Resend API key verification failed');
@@ -30,10 +28,12 @@ const verifyTransporter = async () => {
  * @param {string} data.message - Message body
  */
 const sendContactEmails = async ({ name, email, message }) => {
+    const ownerEmail = getOwnerEmail();
+
     // 1. Notification Email to Owner (Dipesh)
     const ownerEmailPromise = resend.emails.send({
         from: FROM_EMAIL,
-        to: [OWNER_EMAIL],
+        to: [ownerEmail],
         replyTo: email,
         subject: `📬 New Message from ${name} via Portfolio`,
         html: `
@@ -106,19 +106,20 @@ const sendContactEmails = async ({ name, email, message }) => {
     }
 
     if (thankYouResult.status === 'rejected') {
-        console.error('Failed to send thank-you email to user:', thankYouResult.reason);
+        console.warn('Note: Thank-you auto-reply could not be sent (Resend requires verified custom domain to send to non-owner addresses):', thankYouResult.reason?.message || thankYouResult.reason);
     } else if (thankYouResult.value.error) {
-        console.error('Resend error sending thank-you:', thankYouResult.value.error);
+        console.warn('Note: Thank-you auto-reply to visitor skipped/failed:', thankYouResult.value.error?.message);
     } else {
         console.log('Thank-you email sent to user successfully:', thankYouResult.value.data?.id);
     }
 
-    // Check if both completely failed
     const ownerFailed = ownerResult.status === 'rejected' || ownerResult.value?.error;
-    const thankYouFailed = thankYouResult.status === 'rejected' || thankYouResult.value?.error;
 
-    if (ownerFailed && thankYouFailed) {
-        throw new Error('Both notification and thank-you emails failed to send.');
+    if (ownerFailed) {
+        const errorMsg = ownerResult.status === 'rejected' 
+            ? ownerResult.reason?.message 
+            : ownerResult.value?.error?.message;
+        throw new Error(`Owner notification email failed: ${errorMsg}`);
     }
 };
 
