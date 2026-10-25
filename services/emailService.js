@@ -5,7 +5,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // The "from" address to use.
 // With Resend's free tier (no custom domain), you must use: onboarding@resend.dev
 // With a verified custom domain, use your own address e.g. contact@dipeshchaudhary1.com.np
-const FROM_EMAIL = process.env.FROM_EMAIL || 'Dipesh Chaudhary <onboarding@resend.dev>';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'Dipesh Chaudhary <contact@dipeshchaudhary1.com.np>';
 const getOwnerEmail = () => process.env.EMAIL_USER || 'chaudharydipesh9765@gmail.com';
 
 /**

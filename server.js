@@ -55,7 +55,7 @@ app.get('/api/test-email', async (req, res) => {
         RESEND_API_KEY_PREFIX: process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.substring(0, 6) + '***' : 'NOT SET',
         EMAIL_USER_SET: !!process.env.EMAIL_USER,
         EMAIL_USER_VALUE: process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 5) + '***' : 'NOT SET',
-        FROM_EMAIL: process.env.FROM_EMAIL || 'onboarding@resend.dev (default)',
+        FROM_EMAIL: process.env.FROM_EMAIL || 'Dipesh Chaudhary <contact@dipeshchaudhary1.com.np>',
     };
 
     try {
@@ -72,7 +72,7 @@ app.get('/api/test-email', async (req, res) => {
         // Step 2: Try sending a test email to yourself
         const { Resend } = require('resend');
         const resend = new Resend(process.env.RESEND_API_KEY);
-        const fromEmail = process.env.FROM_EMAIL || 'Dipesh Chaudhary <onboarding@resend.dev>';
+        const fromEmail = process.env.FROM_EMAIL || 'Dipesh Chaudhary <contact@dipeshchaudhary1.com.np>';
 
         const recipient = process.env.EMAIL_USER || 'chaudharydipesh9765@gmail.com';
 
