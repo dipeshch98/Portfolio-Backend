@@ -1,12 +1,16 @@
 const nodemailer = require('nodemailer');
 
-// Configure Nodemailer transporter with Gmail
+const cleanEmail = (process.env.EMAIL_USER || '').trim();
+const cleanPass = (process.env.EMAIL_PASS || '').replace(/['"\s]/g, '');
+
+// Configure Nodemailer transporter with Gmail SMTP
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true, // SSL
     auth: {
-        user: process.env.EMAIL_USER,
-        // Google App Passwords are 16 chars; strip any spaces if present
-        pass: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s+/g, '') : '',
+        user: cleanEmail,
+        pass: cleanPass,
     },
 });
 
@@ -84,10 +88,26 @@ const sendContactEmails = async ({ name, email, message }) => {
         `,
     };
 
-    return Promise.all([
+    const [ownerResult, thankYouResult] = await Promise.allSettled([
         transporter.sendMail(ownerMailOptions),
         transporter.sendMail(thankYouMailOptions),
     ]);
+
+    if (ownerResult.status === 'rejected') {
+        console.error('Failed to send notification email to owner:', ownerResult.reason);
+    } else {
+        console.log('Notification email sent to owner successfully:', ownerResult.value.messageId);
+    }
+
+    if (thankYouResult.status === 'rejected') {
+        console.error('Failed to send thank-you email to user:', thankYouResult.reason);
+    } else {
+        console.log('Thank-you email sent to user successfully:', thankYouResult.value.messageId);
+    }
+
+    if (ownerResult.status === 'rejected' && thankYouResult.status === 'rejected') {
+        throw new Error('Both notification and thank-you emails failed to send.');
+    }
 };
 
 module.exports = {
