@@ -52,6 +52,44 @@ app.post('/api/contact', async (req, res) => {
     }
 });
 
+// Diagnostic Route - Test email sending (REMOVE after debugging)
+app.get('/api/test-email', async (req, res) => {
+    const diagnostics = {
+        EMAIL_USER_SET: !!process.env.EMAIL_USER,
+        EMAIL_USER_VALUE: process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 5) + '***' : 'NOT SET',
+        EMAIL_PASS_SET: !!process.env.EMAIL_PASS,
+        EMAIL_PASS_LENGTH: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 0,
+        EMAIL_PASS_CLEANED_LENGTH: process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/['\"\s]/g, '').length : 0,
+    };
+
+    try {
+        // Step 1: Verify transporter
+        await transporter.verify();
+        diagnostics.TRANSPORTER_VERIFY = 'SUCCESS';
+    } catch (verifyErr) {
+        diagnostics.TRANSPORTER_VERIFY = 'FAILED';
+        diagnostics.VERIFY_ERROR = verifyErr.message;
+        return res.json({ success: false, diagnostics });
+    }
+
+    try {
+        // Step 2: Try sending a test email
+        const info = await transporter.sendMail({
+            from: `"Test" <${process.env.EMAIL_USER}>`,
+            to: process.env.EMAIL_USER,
+            subject: 'Render Email Test',
+            text: 'If you receive this, Render can send emails!',
+        });
+        diagnostics.SEND_TEST = 'SUCCESS';
+        diagnostics.MESSAGE_ID = info.messageId;
+        return res.json({ success: true, diagnostics });
+    } catch (sendErr) {
+        diagnostics.SEND_TEST = 'FAILED';
+        diagnostics.SEND_ERROR = sendErr.message;
+        return res.json({ success: false, diagnostics });
+    }
+});
+
 // Connect to MongoDB & Start Server
 const PORT = process.env.PORT || 5000;
 
