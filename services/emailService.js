@@ -85,7 +85,7 @@ const sendContactEmails = async ({ name, email, message }) => {
                     </p>
                     <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 24px;">
                         <p style="margin: 0; color: #1e293b; font-weight: 600; font-size: 15px;">Dipesh Chaudhary</p>
-                        <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;">Full Stack Developer</p>
+                        <p style="margin: 4px 0 0; color: #64748b; font-size: 13px;">Web Developer</p>
                     </div>
                 </div>
             </div>
@@ -116,8 +116,8 @@ const sendContactEmails = async ({ name, email, message }) => {
     const ownerFailed = ownerResult.status === 'rejected' || ownerResult.value?.error;
 
     if (ownerFailed) {
-        const errorMsg = ownerResult.status === 'rejected' 
-            ? ownerResult.reason?.message 
+        const errorMsg = ownerResult.status === 'rejected'
+            ? ownerResult.reason?.message
             : ownerResult.value?.error?.message;
         throw new Error(`Owner notification email failed: ${errorMsg}`);
     }
