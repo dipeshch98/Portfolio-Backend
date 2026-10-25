@@ -64,6 +64,7 @@ const sendContactEmails = async ({ name, email, message }) => {
     const thankYouEmailPromise = resend.emails.send({
         from: FROM_EMAIL,
         to: [email],
+        replyTo: ownerEmail,
         subject: `Thank you for reaching out, ${name}!`,
         html: `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc; border-radius: 8px;">
