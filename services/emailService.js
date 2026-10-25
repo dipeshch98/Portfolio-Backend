@@ -1,18 +1,26 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const cleanEmail = (process.env.EMAIL_USER || '').trim();
-const cleanPass = (process.env.EMAIL_PASS || '').replace(/['"\s]/g, '');
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Configure Nodemailer transporter with Gmail SMTP
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // SSL
-    auth: {
-        user: cleanEmail,
-        pass: cleanPass,
-    },
-});
+// The "from" address to use.
+// With Resend's free tier (no custom domain), you must use: onboarding@resend.dev
+// With a verified custom domain, use your own address e.g. contact@dipeshchaudhary1.com.np
+const FROM_EMAIL = process.env.FROM_EMAIL || 'Dipesh Chaudhary <onboarding@resend.dev>';
+const OWNER_EMAIL = process.env.EMAIL_USER; // Your personal email to receive notifications
+
+/**
+ * Verify that the Resend API key is valid.
+ * Used by the diagnostic /api/test-email endpoint.
+ */
+const verifyTransporter = async () => {
+    // Resend doesn't have a "verify" method like Nodemailer.
+    // We'll send a lightweight API call to check the key works.
+    const { data, error } = await resend.apiKeys.list();
+    if (error) {
+        throw new Error(error.message || 'Resend API key verification failed');
+    }
+    return data;
+};
 
 /**
  * Send notification email to the website owner and a thank you auto-reply to the visitor.
@@ -22,15 +30,12 @@ const transporter = nodemailer.createTransport({
  * @param {string} data.message - Message body
  */
 const sendContactEmails = async ({ name, email, message }) => {
-    const ownerEmail = process.env.EMAIL_USER;
-
     // 1. Notification Email to Owner (Dipesh)
-    const ownerMailOptions = {
-        from: `"Portfolio Contact Form" <${ownerEmail}>`,
-        to: ownerEmail,
+    const ownerEmailPromise = resend.emails.send({
+        from: FROM_EMAIL,
+        to: [OWNER_EMAIL],
         replyTo: email,
         subject: `📬 New Message from ${name} via Portfolio`,
-        text: `You have received a new contact message!\n\nName: ${name}\nEmail: ${email}\n\nMessage:\n${message}\n`,
         html: `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc; border-radius: 8px;">
                 <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
@@ -53,14 +58,13 @@ const sendContactEmails = async ({ name, email, message }) => {
                 </div>
             </div>
         `,
-    };
+    });
 
     // 2. Thank You Email to the Visitor
-    const thankYouMailOptions = {
-        from: `"Dipesh Chaudhary" <${ownerEmail}>`,
-        to: email,
+    const thankYouEmailPromise = resend.emails.send({
+        from: FROM_EMAIL,
+        to: [email],
         subject: `Thank you for reaching out, ${name}!`,
-        text: `Hi ${name},\n\nThank you for getting in touch through my portfolio website! I have received your message and will review it as soon as possible. I typically respond within 24-48 hours.\n\nHere is a copy of your message:\n"${message}"\n\nBest regards,\nDipesh Chaudhary`,
         html: `
             <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc; border-radius: 8px;">
                 <div style="background: linear-gradient(135deg, #0f172a, #1e293b); padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
@@ -86,31 +90,39 @@ const sendContactEmails = async ({ name, email, message }) => {
                 </div>
             </div>
         `,
-    };
+    });
 
     const [ownerResult, thankYouResult] = await Promise.allSettled([
-        transporter.sendMail(ownerMailOptions),
-        transporter.sendMail(thankYouMailOptions),
+        ownerEmailPromise,
+        thankYouEmailPromise,
     ]);
 
     if (ownerResult.status === 'rejected') {
         console.error('Failed to send notification email to owner:', ownerResult.reason);
+    } else if (ownerResult.value.error) {
+        console.error('Resend error sending to owner:', ownerResult.value.error);
     } else {
-        console.log('Notification email sent to owner successfully:', ownerResult.value.messageId);
+        console.log('Notification email sent to owner successfully:', ownerResult.value.data?.id);
     }
 
     if (thankYouResult.status === 'rejected') {
         console.error('Failed to send thank-you email to user:', thankYouResult.reason);
+    } else if (thankYouResult.value.error) {
+        console.error('Resend error sending thank-you:', thankYouResult.value.error);
     } else {
-        console.log('Thank-you email sent to user successfully:', thankYouResult.value.messageId);
+        console.log('Thank-you email sent to user successfully:', thankYouResult.value.data?.id);
     }
 
-    if (ownerResult.status === 'rejected' && thankYouResult.status === 'rejected') {
+    // Check if both completely failed
+    const ownerFailed = ownerResult.status === 'rejected' || ownerResult.value?.error;
+    const thankYouFailed = thankYouResult.status === 'rejected' || thankYouResult.value?.error;
+
+    if (ownerFailed && thankYouFailed) {
         throw new Error('Both notification and thank-you emails failed to send.');
     }
 };
 
 module.exports = {
-    transporter,
+    verifyTransporter,
     sendContactEmails,
 };
