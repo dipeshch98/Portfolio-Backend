@@ -1,17 +1,29 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const dns = require('dns');
 require('dotenv').config();
+
+// Use reliable DNS servers to resolve MongoDB SRV records
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 // Import the Message model and email service
 const Message = require('./models/Message');
 const { verifyTransporter, sendContactEmails } = require('./services/emailService');
+
+// Import Auth and Message Routes
+const authRoutes = require('./routes/authRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 
 const app = express();
 
 // Middleware
 app.use(express.json());
 app.use(cors());
+
+// Auth & Protected Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/messages', messageRoutes);
 
 // Test Route
 app.get('/', (req, res) => {
